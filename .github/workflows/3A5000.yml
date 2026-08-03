@@ -4,8 +4,14 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  os-release:
     runs-on: self-hosted
     steps:
       - name: Show OS release info
         run: cat /etc/os-release
+
+  checkout-v7-0-1:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
