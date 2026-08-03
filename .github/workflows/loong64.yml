@@ -1,0 +1,275 @@
+name: loong64
+on:
+  push:
+    branches:
+      - loong64-*
+    tags:
+      - release-loong64-*
+  pull_request:
+    branches:
+      - loong64-*
+
+env:
+  NAMESPACE: ${{ vars.NAMESPACE || 'kubernetesloong64' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      DOCKER_TAG: ${{ steps.extract.outputs.DOCKER_TAG }}
+      GIT_BRANCH: ${{ steps.extract.outputs.GIT_BRANCH }}
+      IS_STABLE: ${{ steps.extract.outputs.IS_STABLE }}
+    strategy:
+      fail-fast: false
+      matrix:
+        base:
+          - os: debian
+            dockerfile: Dockerfile.debian
+            base_image: lcr.loongnix.cn/debian:14
+          - os: debian-slim
+            dockerfile: Dockerfile.debian
+            base_image: lcr.loongnix.cn/debian:14-slim
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Print branch name
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "${{ github.base_ref }} (PR target)"
+          else
+            echo ${{ github.ref_name }}
+          fi
+      - name: Extract git branch
+        id: extract
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            REF=${{ github.base_ref }}
+          else
+            REF=${{ github.ref_name }}
+          fi
+          echo "REF=$REF"
+          RAW_VERSION=$(echo $REF | awk -F'loong64-' '{print $2}')
+          echo "RAW_VERSION=$RAW_VERSION"
+          echo "RAW_VERSION=$RAW_VERSION" >> ${GITHUB_ENV}
+          GIT_BRANCH=$(echo $RAW_VERSION | awk -F'+' '{print $1}')
+          echo "GIT_BRANCH=$GIT_BRANCH"
+          echo "GIT_BRANCH=$GIT_BRANCH" >> ${GITHUB_ENV}
+          echo "GIT_BRANCH=$GIT_BRANCH" >> ${GITHUB_OUTPUT}
+          DOCKER_TAG=$(echo $RAW_VERSION | sed 's/+/-/g')
+          echo "DOCKER_TAG=$DOCKER_TAG"
+          echo "DOCKER_TAG=$DOCKER_TAG" >> ${GITHUB_ENV}
+          echo "DOCKER_TAG=$DOCKER_TAG" >> ${GITHUB_OUTPUT}
+          if echo "$RAW_VERSION" | grep -qE '[+].*(alpha|beta|rc)'; then
+            IS_STABLE=false
+          else
+            IS_STABLE=true
+          fi
+          echo "IS_STABLE=$IS_STABLE"
+          echo "IS_STABLE=$IS_STABLE" >> ${GITHUB_OUTPUT}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+      - name: Build Docker image
+        run: |
+          IMAGE_REF=${{ env.NAMESPACE }}/git-loong64:${{ env.DOCKER_TAG }}-${{ matrix.base.os }}
+          TAR_FILE=git-loong64-${{ env.DOCKER_TAG }}-${{ matrix.base.os }}.tar
+          echo "=== Before Docker build ==="
+          docker images
+          echo "=== Starting Docker build ==="
+          docker buildx build \
+            --no-cache \
+            -f "docker/${{ matrix.base.dockerfile }}" \
+            --load \
+            --build-arg "GIT_BRANCH=${{ env.GIT_BRANCH }}" \
+            --build-arg "BASE_IMAGE=${{ matrix.base.base_image }}" \
+            --platform linux/loong64 \
+            -t "$IMAGE_REF" \
+            docker/
+          echo "=== After build ==="
+          docker images
+          echo "=== Saving $IMAGE_REF ==="
+          docker save -o "$TAR_FILE" "$IMAGE_REF"
+          echo "=== Image tarball ==="
+          ls -lha "$TAR_FILE"
+          echo "=== Manifest ==="
+          echo "--- repositories ---"
+          tar -xOf "$TAR_FILE" repositories
+          echo "--- manifest.json ---"
+          tar -xOf "$TAR_FILE" manifest.json | jq
+          echo "--- config ---"
+          tar -xOf "$TAR_FILE" $(tar -xOf "$TAR_FILE" manifest.json | jq -r '.[0].Config') | jq
+          echo "--- os, architecture ---"
+          tar -xOf "$TAR_FILE" $(tar -xOf "$TAR_FILE" manifest.json | jq -r '.[0].Config') | jq '{os, architecture}'
+      - name: Upload container image
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: git-loong64-image-${{ matrix.base.os }}
+          path: git-loong64-${{ env.DOCKER_TAG }}-${{ matrix.base.os }}.tar
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      BASE_URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}
+      DOCKER_TAG: ${{ needs.build.outputs.DOCKER_TAG }}
+      GIT_BRANCH: ${{ needs.build.outputs.GIT_BRANCH }}
+      IS_STABLE: ${{ needs.build.outputs.IS_STABLE }}
+    steps:
+      - name: Download container images
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: git-loong64-image-*
+          path: loong64-artifacts
+          merge-multiple: true
+      - name: List downloaded files
+        run: find . -type f
+      - name: Login to Docker
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Load and push Docker images
+        run: |
+          echo "=== Loading images ==="
+          for tar in loong64-artifacts/git-loong64-*.tar; do
+            echo "=== Loading $tar ==="
+            docker load -i "$tar"
+          done
+          echo "=== After load ==="
+          docker images
+
+          for os in anolis debian debian-slim; do
+            IMAGE_REF=${{ env.NAMESPACE }}/git-loong64:${{ env.DOCKER_TAG }}-$os
+            GIT_BRANCH_IMAGE_REF=${{ env.NAMESPACE }}/git-loong64:${{ env.GIT_BRANCH }}-$os
+            echo "=== Pushing $IMAGE_REF ==="
+            docker push $IMAGE_REF
+            docker tag $IMAGE_REF $GIT_BRANCH_IMAGE_REF
+            docker push $GIT_BRANCH_IMAGE_REF
+
+            if [ "${{ env.IS_STABLE }}" = "true" ]; then
+              ALT_IMAGE=${{ env.NAMESPACE }}/git:${{ env.DOCKER_TAG }}-$os
+              GIT_BRANCH_ALT_IMAGE=${{ env.NAMESPACE }}/git:${{ env.GIT_BRANCH }}-$os
+              echo "=== Tagging and pushing $ALT_IMAGE ==="
+              docker tag $IMAGE_REF $ALT_IMAGE
+              docker push $ALT_IMAGE
+
+              docker tag $IMAGE_REF $GIT_BRANCH_ALT_IMAGE
+              docker push $GIT_BRANCH_ALT_IMAGE
+            fi
+          done
+
+          echo "=== Push complete ==="
+      - name: Import GPG key
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY_BASE64 }}" | base64 -d | gpg --batch --import > /dev/null
+          echo "$(gpg --list-secret-keys --keyid-format LONG | grep -Eo '[A-F0-9]{40}' | head -1):6:" | gpg --import-ownertrust
+      - name: Sign artifacts
+        run: |
+          find loong64-artifacts -type f | while read -r file; do
+            gpg --detach-sign --armor "$file"
+            echo "Signed: $file"
+            gpg --verify "$file".asc "$file"
+          done
+      - name: Generate release body
+        run: |
+          cat > release-body.md <<'BODYEOF'
+          ## Artifacts
+
+          | File                                                | Download                                                                                                                   |
+          |-----------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
+          | `git-loong64-${{ env.DOCKER_TAG }}-anolis.tar`      | [git-loong64-${{ env.DOCKER_TAG }}-anolis.tar](${{ env.BASE_URL }}/git-loong64-${{ env.DOCKER_TAG }}-anolis.tar)           |
+          | `git-loong64-${{ env.DOCKER_TAG }}-debian.tar`      | [git-loong64-${{ env.DOCKER_TAG }}-debian.tar](${{ env.BASE_URL }}/git-loong64-${{ env.DOCKER_TAG }}-debian.tar)           |
+          | `git-loong64-${{ env.DOCKER_TAG }}-debian-slim.tar` | [git-loong64-${{ env.DOCKER_TAG }}-debian-slim.tar](${{ env.BASE_URL }}/git-loong64-${{ env.DOCKER_TAG }}-debian-slim.tar) |
+
+          Each file has a corresponding `.asc` detached GPG signature.
+
+          ## Docker image
+
+          ```
+          ${{ env.NAMESPACE }}/git-loong64:${{ env.DOCKER_TAG }}-anolis
+          ${{ env.NAMESPACE }}/git-loong64:${{ env.DOCKER_TAG }}-debian
+          ${{ env.NAMESPACE }}/git-loong64:${{ env.DOCKER_TAG }}-debian-slim
+          ```
+
+          Download and load the image:
+
+          ```shell
+          curl -LO ${{ env.BASE_URL }}/git-loong64-${{ env.DOCKER_TAG }}-anolis.tar
+          docker load -i git-loong64-${{ env.DOCKER_TAG }}-anolis.tar
+          
+          curl -LO ${{ env.BASE_URL }}/git-loong64-${{ env.DOCKER_TAG }}-debian.tar
+          docker load -i git-loong64-${{ env.DOCKER_TAG }}-debian.tar
+
+          curl -LO ${{ env.BASE_URL }}/git-loong64-${{ env.DOCKER_TAG }}-debian-slim.tar
+          docker load -i git-loong64-${{ env.DOCKER_TAG }}-debian-slim.tar
+          ```
+
+          ## Verifying releases
+
+          ```shell
+          gpg --keyserver keys.openpgp.org --recv-keys FCF8724722CCBF9F51B1FBE376532BE7E3013105
+          echo "FCF8724722CCBF9F51B1FBE376532BE7E3013105:6:" | gpg --import-ownertrust
+          gpg --verify <file>.asc <file>
+          ```
+          BODYEOF
+      - name: Create Release
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        with:
+          name: ${{ github.ref_name }}
+          body_path: release-body.md
+          prerelease: ${{ env.IS_STABLE == 'false' }}
+          make_latest: ${{ env.IS_STABLE == 'true' && 'legacy' || 'false' }}
+          files: |
+            loong64-artifacts/**
+
+  sync-registry:
+    if: startsWith(github.ref, 'refs/tags/') && vars.SYNC_REGISTRY != ''
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      DOCKER_TAG: ${{ needs.build.outputs.DOCKER_TAG }}
+      GIT_BRANCH: ${{ needs.build.outputs.GIT_BRANCH }}
+      IS_STABLE: ${{ needs.build.outputs.IS_STABLE }}
+    steps:
+      - name: Download container images
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: git-loong64-image-*
+          path: loong64-artifacts
+          merge-multiple: true
+      - name: Load Docker images
+        run: |
+          for tar in loong64-artifacts/git-loong64-*.tar; do
+            echo "=== Loading $tar ==="
+            docker load -i "$tar"
+          done
+          echo "=== After load ==="
+          docker images
+      - name: Login to sync container registry
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ${{ vars.SYNC_REGISTRY }}
+          username: ${{ vars.SYNC_REGISTRY_USERNAME }}
+          password: ${{ secrets.SYNC_REGISTRY_PASSWORD }}
+      - name: Sync Docker images to sync container registry
+        run: |
+          for os in anolis debian debian-slim; do
+            IMAGE_REF=${{ env.NAMESPACE }}/git-loong64:${{ env.DOCKER_TAG }}-$os
+            SYNC_IMAGE_REF=${{ vars.SYNC_REGISTRY }}/${{ env.NAMESPACE }}/git-loong64:${{ env.DOCKER_TAG }}-$os
+            SYNC_GIT_BRANCH_IMAGE_REF=${{ vars.SYNC_REGISTRY }}/${{ env.NAMESPACE }}/git-loong64:${{ env.GIT_BRANCH }}-$os
+            echo "=== Syncing $IMAGE_REF -> $SYNC_IMAGE_REF ==="
+            docker tag $IMAGE_REF $SYNC_IMAGE_REF
+            docker push $SYNC_IMAGE_REF
+
+            docker tag $IMAGE_REF $SYNC_GIT_BRANCH_IMAGE_REF
+            docker push $SYNC_GIT_BRANCH_IMAGE_REF
+          done
+          echo "=== Registry sync complete ==="
