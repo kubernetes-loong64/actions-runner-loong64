@@ -11,27 +11,26 @@ LABEL maintainer="xuxiaowei@xuxiaowei.com.cn" \
       org.opencontainers.image.source="https://github.com/kubernetes-loong64/actions-runner-loong64" \
       org.opencontainers.image.licenses="Apache-2.0"
 
-RUN set -eux; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends \
-        ca-certificates \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
         curl \
         git \
-        ; \
-    rm -rf /var/lib/apt/lists/*; \
-    \
-    VERSION_NO_V=$(echo "${GIT_BRANCH}" | sed 's/^v//'); \
-    RUNNER_TARBALL="actions-runner-linux-loongarch64-${VERSION_NO_V}.tar.gz"; \
-    RUNNER_URL="https://github.com/loong64/runner/releases/download/${GIT_BRANCH}/${RUNNER_TARBALL}"; \
-    echo "Downloading runner from: ${RUNNER_URL}"; \
-    \
-    useradd -m -s /bin/bash runner; \
-    mkdir -p /home/runner/actions-runner; \
-    cd /home/runner/actions-runner; \
-    curl -fsSL "${RUNNER_URL}" -o "${RUNNER_TARBALL}"; \
-    tar xzf "${RUNNER_TARBALL}"; \
-    rm "${RUNNER_TARBALL}"; \
-    chown -R runner:runner /home/runner/actions-runner
+        libssl-dev \
+        libicu-dev \
+        ca-certificates \
+    && VERSION_NO_V=$(echo "${GIT_BRANCH}" | sed 's/^v//') \
+    && RUNNER_TARBALL="actions-runner-linux-loongarch64-${VERSION_NO_V}.tar.gz" \
+    && RUNNER_URL="https://github.com/loong64/runner/releases/download/${GIT_BRANCH}/${RUNNER_TARBALL}" \
+    && echo "Downloading runner from: ${RUNNER_URL}" \
+    && useradd -m -s /bin/bash runner \
+    && mkdir -p /home/runner/actions-runner \
+    && cd /home/runner/actions-runner \
+    && curl -fsSL "${RUNNER_URL}" -o "${RUNNER_TARBALL}" \
+    && tar xzf "${RUNNER_TARBALL}" \
+    && rm "${RUNNER_TARBALL}" \
+    && chown -R runner:runner /home/runner/actions-runner \
+    && ./bin/installdependencies.sh \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
