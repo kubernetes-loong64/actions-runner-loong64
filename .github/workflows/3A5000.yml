@@ -1,0 +1,11 @@
+name: 3A5000
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+      - name: Show OS release info
+        run: cat /etc/os-release
