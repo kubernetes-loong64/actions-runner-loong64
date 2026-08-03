@@ -30,7 +30,8 @@ RUN apt-get update \
     && rm "${RUNNER_TARBALL}" \
     && chown -R runner:runner /home/runner/actions-runner \
     && ./bin/installdependencies.sh \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && su runner -c "./run.sh --help"
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
