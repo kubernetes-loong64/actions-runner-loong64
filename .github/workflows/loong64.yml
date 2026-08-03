@@ -144,7 +144,7 @@ jobs:
           echo "=== After load ==="
           docker images
 
-          for os in anolis debian debian-slim; do
+          for os in debian debian-slim; do
             IMAGE_REF=${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.DOCKER_TAG }}-$os
             GIT_BRANCH_IMAGE_REF=${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.GIT_BRANCH }}-$os
             echo "=== Pushing $IMAGE_REF ==="
@@ -183,7 +183,6 @@ jobs:
 
           | File                                                | Download                                                                                                                   |
           |-----------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-          | `actions-runner-loong64-${{ env.DOCKER_TAG }}-anolis.tar`      | [actions-runner-loong64-${{ env.DOCKER_TAG }}-anolis.tar](${{ env.BASE_URL }}/actions-runner-loong64-${{ env.DOCKER_TAG }}-anolis.tar)           |
           | `actions-runner-loong64-${{ env.DOCKER_TAG }}-debian.tar`      | [actions-runner-loong64-${{ env.DOCKER_TAG }}-debian.tar](${{ env.BASE_URL }}/actions-runner-loong64-${{ env.DOCKER_TAG }}-debian.tar)           |
           | `actions-runner-loong64-${{ env.DOCKER_TAG }}-debian-slim.tar` | [actions-runner-loong64-${{ env.DOCKER_TAG }}-debian-slim.tar](${{ env.BASE_URL }}/actions-runner-loong64-${{ env.DOCKER_TAG }}-debian-slim.tar) |
 
@@ -192,7 +191,6 @@ jobs:
           ## Docker image
 
           ```
-          ${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.DOCKER_TAG }}-anolis
           ${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.DOCKER_TAG }}-debian
           ${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.DOCKER_TAG }}-debian-slim
           ```
@@ -200,9 +198,6 @@ jobs:
           Download and load the image:
 
           ```shell
-          curl -LO ${{ env.BASE_URL }}/actions-runner-loong64-${{ env.DOCKER_TAG }}-anolis.tar
-          docker load -i actions-runner-loong64-${{ env.DOCKER_TAG }}-anolis.tar
-
           curl -LO ${{ env.BASE_URL }}/actions-runner-loong64-${{ env.DOCKER_TAG }}-debian.tar
           docker load -i actions-runner-loong64-${{ env.DOCKER_TAG }}-debian.tar
 
@@ -261,7 +256,7 @@ jobs:
           password: ${{ secrets.SYNC_REGISTRY_PASSWORD }}
       - name: Sync Docker images to sync container registry
         run: |
-          for os in anolis debian debian-slim; do
+          for os in debian debian-slim; do
             IMAGE_REF=${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.DOCKER_TAG }}-$os
             SYNC_IMAGE_REF=${{ vars.SYNC_REGISTRY }}/${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.DOCKER_TAG }}-$os
             SYNC_GIT_BRANCH_IMAGE_REF=${{ vars.SYNC_REGISTRY }}/${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.GIT_BRANCH }}-$os
