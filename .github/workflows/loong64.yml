@@ -74,8 +74,8 @@ jobs:
         uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
       - name: Build Docker image
         run: |
-          IMAGE_REF=${{ env.NAMESPACE }}/git-loong64:${{ env.DOCKER_TAG }}-${{ matrix.base.os }}
-          TAR_FILE=git-loong64-${{ env.DOCKER_TAG }}-${{ matrix.base.os }}.tar
+          IMAGE_REF=${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.DOCKER_TAG }}-${{ matrix.base.os }}
+          TAR_FILE=actions-runner-loong64-${{ env.DOCKER_TAG }}-${{ matrix.base.os }}.tar
           echo "=== Before Docker build ==="
           docker images
           echo "=== Starting Docker build ==="
@@ -106,8 +106,8 @@ jobs:
       - name: Upload container image
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: git-loong64-image-${{ matrix.base.os }}
-          path: git-loong64-${{ env.DOCKER_TAG }}-${{ matrix.base.os }}.tar
+          name: actions-runner-loong64-image-${{ matrix.base.os }}
+          path: actions-runner-loong64-${{ env.DOCKER_TAG }}-${{ matrix.base.os }}.tar
 
   release:
     #if: startsWith(github.ref, 'refs/tags/')
@@ -124,7 +124,7 @@ jobs:
       - name: Download container images
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: git-loong64-image-*
+          pattern: actions-runner-loong64-image-*
           path: loong64-artifacts
           merge-multiple: true
       - name: List downloaded files
@@ -137,7 +137,7 @@ jobs:
       - name: Load and push Docker images
         run: |
           echo "=== Loading images ==="
-          for tar in loong64-artifacts/git-loong64-*.tar; do
+          for tar in loong64-artifacts/actions-runner-loong64-*.tar; do
             echo "=== Loading $tar ==="
             docker load -i "$tar"
           done
@@ -145,8 +145,8 @@ jobs:
           docker images
 
           for os in anolis debian debian-slim; do
-            IMAGE_REF=${{ env.NAMESPACE }}/git-loong64:${{ env.DOCKER_TAG }}-$os
-            GIT_BRANCH_IMAGE_REF=${{ env.NAMESPACE }}/git-loong64:${{ env.GIT_BRANCH }}-$os
+            IMAGE_REF=${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.DOCKER_TAG }}-$os
+            GIT_BRANCH_IMAGE_REF=${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.GIT_BRANCH }}-$os
             echo "=== Pushing $IMAGE_REF ==="
             docker push $IMAGE_REF
             docker tag $IMAGE_REF $GIT_BRANCH_IMAGE_REF
@@ -183,31 +183,31 @@ jobs:
 
           | File                                                | Download                                                                                                                   |
           |-----------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-          | `git-loong64-${{ env.DOCKER_TAG }}-anolis.tar`      | [git-loong64-${{ env.DOCKER_TAG }}-anolis.tar](${{ env.BASE_URL }}/git-loong64-${{ env.DOCKER_TAG }}-anolis.tar)           |
-          | `git-loong64-${{ env.DOCKER_TAG }}-debian.tar`      | [git-loong64-${{ env.DOCKER_TAG }}-debian.tar](${{ env.BASE_URL }}/git-loong64-${{ env.DOCKER_TAG }}-debian.tar)           |
-          | `git-loong64-${{ env.DOCKER_TAG }}-debian-slim.tar` | [git-loong64-${{ env.DOCKER_TAG }}-debian-slim.tar](${{ env.BASE_URL }}/git-loong64-${{ env.DOCKER_TAG }}-debian-slim.tar) |
+          | `actions-runner-loong64-${{ env.DOCKER_TAG }}-anolis.tar`      | [actions-runner-loong64-${{ env.DOCKER_TAG }}-anolis.tar](${{ env.BASE_URL }}/actions-runner-loong64-${{ env.DOCKER_TAG }}-anolis.tar)           |
+          | `actions-runner-loong64-${{ env.DOCKER_TAG }}-debian.tar`      | [actions-runner-loong64-${{ env.DOCKER_TAG }}-debian.tar](${{ env.BASE_URL }}/actions-runner-loong64-${{ env.DOCKER_TAG }}-debian.tar)           |
+          | `actions-runner-loong64-${{ env.DOCKER_TAG }}-debian-slim.tar` | [actions-runner-loong64-${{ env.DOCKER_TAG }}-debian-slim.tar](${{ env.BASE_URL }}/actions-runner-loong64-${{ env.DOCKER_TAG }}-debian-slim.tar) |
 
           Each file has a corresponding `.asc` detached GPG signature.
 
           ## Docker image
 
           ```
-          ${{ env.NAMESPACE }}/git-loong64:${{ env.DOCKER_TAG }}-anolis
-          ${{ env.NAMESPACE }}/git-loong64:${{ env.DOCKER_TAG }}-debian
-          ${{ env.NAMESPACE }}/git-loong64:${{ env.DOCKER_TAG }}-debian-slim
+          ${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.DOCKER_TAG }}-anolis
+          ${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.DOCKER_TAG }}-debian
+          ${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.DOCKER_TAG }}-debian-slim
           ```
 
           Download and load the image:
 
           ```shell
-          curl -LO ${{ env.BASE_URL }}/git-loong64-${{ env.DOCKER_TAG }}-anolis.tar
-          docker load -i git-loong64-${{ env.DOCKER_TAG }}-anolis.tar
-          
-          curl -LO ${{ env.BASE_URL }}/git-loong64-${{ env.DOCKER_TAG }}-debian.tar
-          docker load -i git-loong64-${{ env.DOCKER_TAG }}-debian.tar
+          curl -LO ${{ env.BASE_URL }}/actions-runner-loong64-${{ env.DOCKER_TAG }}-anolis.tar
+          docker load -i actions-runner-loong64-${{ env.DOCKER_TAG }}-anolis.tar
 
-          curl -LO ${{ env.BASE_URL }}/git-loong64-${{ env.DOCKER_TAG }}-debian-slim.tar
-          docker load -i git-loong64-${{ env.DOCKER_TAG }}-debian-slim.tar
+          curl -LO ${{ env.BASE_URL }}/actions-runner-loong64-${{ env.DOCKER_TAG }}-debian.tar
+          docker load -i actions-runner-loong64-${{ env.DOCKER_TAG }}-debian.tar
+
+          curl -LO ${{ env.BASE_URL }}/actions-runner-loong64-${{ env.DOCKER_TAG }}-debian-slim.tar
+          docker load -i actions-runner-loong64-${{ env.DOCKER_TAG }}-debian-slim.tar
           ```
 
           ## Verifying releases
@@ -242,12 +242,12 @@ jobs:
       - name: Download container images
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: git-loong64-image-*
+          pattern: actions-runner-loong64-image-*
           path: loong64-artifacts
           merge-multiple: true
       - name: Load Docker images
         run: |
-          for tar in loong64-artifacts/git-loong64-*.tar; do
+          for tar in loong64-artifacts/actions-runner-loong64-*.tar; do
             echo "=== Loading $tar ==="
             docker load -i "$tar"
           done
@@ -262,9 +262,9 @@ jobs:
       - name: Sync Docker images to sync container registry
         run: |
           for os in anolis debian debian-slim; do
-            IMAGE_REF=${{ env.NAMESPACE }}/git-loong64:${{ env.DOCKER_TAG }}-$os
-            SYNC_IMAGE_REF=${{ vars.SYNC_REGISTRY }}/${{ env.NAMESPACE }}/git-loong64:${{ env.DOCKER_TAG }}-$os
-            SYNC_GIT_BRANCH_IMAGE_REF=${{ vars.SYNC_REGISTRY }}/${{ env.NAMESPACE }}/git-loong64:${{ env.GIT_BRANCH }}-$os
+            IMAGE_REF=${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.DOCKER_TAG }}-$os
+            SYNC_IMAGE_REF=${{ vars.SYNC_REGISTRY }}/${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.DOCKER_TAG }}-$os
+            SYNC_GIT_BRANCH_IMAGE_REF=${{ vars.SYNC_REGISTRY }}/${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.GIT_BRANCH }}-$os
             echo "=== Syncing $IMAGE_REF -> $SYNC_IMAGE_REF ==="
             docker tag $IMAGE_REF $SYNC_IMAGE_REF
             docker push $SYNC_IMAGE_REF
