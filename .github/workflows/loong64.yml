@@ -110,7 +110,7 @@ jobs:
           path: git-loong64-${{ env.DOCKER_TAG }}-${{ matrix.base.os }}.tar
 
   release:
-    if: startsWith(github.ref, 'refs/tags/')
+    #if: startsWith(github.ref, 'refs/tags/')
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -229,7 +229,7 @@ jobs:
             loong64-artifacts/**
 
   sync-registry:
-    if: startsWith(github.ref, 'refs/tags/') && vars.SYNC_REGISTRY != ''
+    #if: startsWith(github.ref, 'refs/tags/') && vars.SYNC_REGISTRY != ''
     needs: build
     runs-on: ubuntu-latest
     permissions:
