@@ -1,12 +1,12 @@
 ARG BASE_IMAGE=lcr.loongnix.cn/debian:14
 FROM $BASE_IMAGE
 
-ARG GIT_BRANCH=v2.335.1
+ARG RUNNER_BRANCH=v2.335.1
 
 LABEL maintainer="xuxiaowei@xuxiaowei.com.cn" \
       org.opencontainers.image.title="LoongArch GitHub Actions Runner" \
       org.opencontainers.image.description="GitHub Actions Runner for LoongArch (loong64) architecture" \
-      org.opencontainers.image.version="${GIT_BRANCH}" \
+      org.opencontainers.image.version="${RUNNER_BRANCH}" \
       org.opencontainers.image.url="https://github.com/kubernetes-loong64/actions-runner-loong64" \
       org.opencontainers.image.source="https://github.com/kubernetes-loong64/actions-runner-loong64" \
       org.opencontainers.image.licenses="Apache-2.0"
@@ -18,9 +18,9 @@ RUN apt-get update \
         libssl-dev \
         libicu-dev \
         ca-certificates \
-    && VERSION_NO_V=$(echo "${GIT_BRANCH}" | sed 's/^v//') \
+    && VERSION_NO_V=$(echo "${RUNNER_BRANCH}" | sed 's/^v//') \
     && RUNNER_TARBALL="actions-runner-linux-loongarch64-${VERSION_NO_V}.tar.gz" \
-    && RUNNER_URL="https://github.com/loong64/runner/releases/download/${GIT_BRANCH}/${RUNNER_TARBALL}" \
+    && RUNNER_URL="https://github.com/loong64/runner/releases/download/${RUNNER_BRANCH}/${RUNNER_TARBALL}" \
     && echo "Downloading runner from: ${RUNNER_URL}" \
     && useradd -m -s /bin/bash runner \
     && mkdir -p /home/runner/actions-runner \

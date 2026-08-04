@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       DOCKER_TAG: ${{ steps.extract.outputs.DOCKER_TAG }}
-      GIT_BRANCH: ${{ steps.extract.outputs.GIT_BRANCH }}
+      RUNNER_BRANCH: ${{ steps.extract.outputs.RUNNER_BRANCH }}
       IS_STABLE: ${{ steps.extract.outputs.IS_STABLE }}
     strategy:
       fail-fast: false
@@ -53,10 +53,10 @@ jobs:
           RAW_VERSION=$(echo $REF | awk -F'loong64-' '{print $2}')
           echo "RAW_VERSION=$RAW_VERSION"
           echo "RAW_VERSION=$RAW_VERSION" >> ${GITHUB_ENV}
-          GIT_BRANCH=$(echo $RAW_VERSION | awk -F'+' '{print $1}')
-          echo "GIT_BRANCH=$GIT_BRANCH"
-          echo "GIT_BRANCH=$GIT_BRANCH" >> ${GITHUB_ENV}
-          echo "GIT_BRANCH=$GIT_BRANCH" >> ${GITHUB_OUTPUT}
+          RUNNER_BRANCH=$(echo $RAW_VERSION | awk -F'+' '{print $1}')
+          echo "RUNNER_BRANCH=$RUNNER_BRANCH"
+          echo "RUNNER_BRANCH=$RUNNER_BRANCH" >> ${GITHUB_ENV}
+          echo "RUNNER_BRANCH=$RUNNER_BRANCH" >> ${GITHUB_OUTPUT}
           DOCKER_TAG=$(echo $RAW_VERSION | sed 's/+/-/g')
           echo "DOCKER_TAG=$DOCKER_TAG"
           echo "DOCKER_TAG=$DOCKER_TAG" >> ${GITHUB_ENV}
@@ -83,7 +83,7 @@ jobs:
             --no-cache \
             -f "docker/${{ matrix.base.dockerfile }}" \
             --load \
-            --build-arg "GIT_BRANCH=${{ env.GIT_BRANCH }}" \
+            --build-arg "RUNNER_BRANCH=${{ env.RUNNER_BRANCH }}" \
             --build-arg "BASE_IMAGE=${{ matrix.base.base_image }}" \
             --platform linux/loong64 \
             -t "$IMAGE_REF" \
@@ -118,7 +118,7 @@ jobs:
     env:
       BASE_URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}
       DOCKER_TAG: ${{ needs.build.outputs.DOCKER_TAG }}
-      GIT_BRANCH: ${{ needs.build.outputs.GIT_BRANCH }}
+      RUNNER_BRANCH: ${{ needs.build.outputs.RUNNER_BRANCH }}
       IS_STABLE: ${{ needs.build.outputs.IS_STABLE }}
     steps:
       - name: Download container images
@@ -146,21 +146,21 @@ jobs:
 
           for os in debian debian-slim; do
             IMAGE_REF=${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.DOCKER_TAG }}-$os
-            GIT_BRANCH_IMAGE_REF=${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.GIT_BRANCH }}-$os
+            RUNNER_BRANCH_IMAGE_REF=${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.RUNNER_BRANCH }}-$os
             echo "=== Pushing $IMAGE_REF ==="
             docker push $IMAGE_REF
-            docker tag $IMAGE_REF $GIT_BRANCH_IMAGE_REF
-            docker push $GIT_BRANCH_IMAGE_REF
+            docker tag $IMAGE_REF $RUNNER_BRANCH_IMAGE_REF
+            docker push $RUNNER_BRANCH_IMAGE_REF
 
             if [ "${{ env.IS_STABLE }}" = "true" ]; then
-              ALT_IMAGE=${{ env.NAMESPACE }}/git:${{ env.DOCKER_TAG }}-$os
-              GIT_BRANCH_ALT_IMAGE=${{ env.NAMESPACE }}/git:${{ env.GIT_BRANCH }}-$os
+              ALT_IMAGE=${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.DOCKER_TAG }}-$os
+              RUNNER_BRANCH_ALT_IMAGE=${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.RUNNER_BRANCH }}-$os
               echo "=== Tagging and pushing $ALT_IMAGE ==="
               docker tag $IMAGE_REF $ALT_IMAGE
               docker push $ALT_IMAGE
 
-              docker tag $IMAGE_REF $GIT_BRANCH_ALT_IMAGE
-              docker push $GIT_BRANCH_ALT_IMAGE
+              docker tag $IMAGE_REF $RUNNER_BRANCH_ALT_IMAGE
+              docker push $RUNNER_BRANCH_ALT_IMAGE
             fi
           done
 
@@ -231,7 +231,7 @@ jobs:
       contents: read
     env:
       DOCKER_TAG: ${{ needs.build.outputs.DOCKER_TAG }}
-      GIT_BRANCH: ${{ needs.build.outputs.GIT_BRANCH }}
+      RUNNER_BRANCH: ${{ needs.build.outputs.RUNNER_BRANCH }}
       IS_STABLE: ${{ needs.build.outputs.IS_STABLE }}
     steps:
       - name: Download container images
@@ -259,12 +259,12 @@ jobs:
           for os in debian debian-slim; do
             IMAGE_REF=${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.DOCKER_TAG }}-$os
             SYNC_IMAGE_REF=${{ vars.SYNC_REGISTRY }}/${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.DOCKER_TAG }}-$os
-            SYNC_GIT_BRANCH_IMAGE_REF=${{ vars.SYNC_REGISTRY }}/${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.GIT_BRANCH }}-$os
+            SYNC_RUNNER_BRANCH_IMAGE_REF=${{ vars.SYNC_REGISTRY }}/${{ env.NAMESPACE }}/actions-runner-loong64:${{ env.RUNNER_BRANCH }}-$os
             echo "=== Syncing $IMAGE_REF -> $SYNC_IMAGE_REF ==="
             docker tag $IMAGE_REF $SYNC_IMAGE_REF
             docker push $SYNC_IMAGE_REF
 
-            docker tag $IMAGE_REF $SYNC_GIT_BRANCH_IMAGE_REF
-            docker push $SYNC_GIT_BRANCH_IMAGE_REF
+            docker tag $IMAGE_REF $SYNC_RUNNER_BRANCH_IMAGE_REF
+            docker push $SYNC_RUNNER_BRANCH_IMAGE_REF
           done
           echo "=== Registry sync complete ==="
