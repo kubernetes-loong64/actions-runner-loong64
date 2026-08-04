@@ -11,6 +11,7 @@ on:
 
 env:
   NAMESPACE: ${{ vars.NAMESPACE || 'kubernetesloong64' }}
+  DOCKER_CLI_VERSION: v29.7.1+1
 
 jobs:
   build:
@@ -85,6 +86,7 @@ jobs:
             --load \
             --build-arg "RUNNER_BRANCH=${{ env.RUNNER_BRANCH }}" \
             --build-arg "BASE_IMAGE=${{ matrix.base.base_image }}" \
+            --build-arg "DOCKER_CLI_VERSION=${{ env.DOCKER_CLI_VERSION }}" \
             --platform linux/loong64 \
             -t "$IMAGE_REF" \
             docker/

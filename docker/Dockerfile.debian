@@ -2,6 +2,7 @@ ARG BASE_IMAGE=lcr.loongnix.cn/debian:14
 FROM $BASE_IMAGE
 
 ARG RUNNER_BRANCH=v2.335.1
+ARG DOCKER_CLI_VERSION=v29.7.1+1
 
 LABEL maintainer="xuxiaowei@xuxiaowei.com.cn" \
       org.opencontainers.image.title="LoongArch GitHub Actions Runner" \
@@ -30,8 +31,16 @@ RUN apt-get update \
     && rm "${RUNNER_TARBALL}" \
     && chown -R runner:runner /home/runner/actions-runner \
     && ./bin/installdependencies.sh \
+    && DOCKER_CLI_VERSION_NO_V=$(echo "${DOCKER_CLI_VERSION}" | sed 's/^v//') \
+    && DOCKER_CLI_PKG_VERSION=$(echo "${DOCKER_CLI_VERSION_NO_V}" | sed 's/+/-/') \
+    && DOCKER_CLI_URL="https://github.com/kubernetes-loong64/cli-loong64/releases/download/release-loong64-${DOCKER_CLI_VERSION}/docker-ce-cli_${DOCKER_CLI_PKG_VERSION}.debian.13.trixie_loong64.deb" \
+    && echo "Downloading Docker CLI from: ${DOCKER_CLI_URL}" \
+    && curl -fsSL "${DOCKER_CLI_URL}" -o /tmp/docker-ce-cli.deb \
+    && dpkg -i /tmp/docker-ce-cli.deb \
+    && rm /tmp/docker-ce-cli.deb \
     && rm -rf /var/lib/apt/lists/* \
-    && su runner -c "./run.sh --help"
+    && su runner -c "./run.sh --help" \
+    && docker --version
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
