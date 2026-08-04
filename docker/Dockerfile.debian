@@ -14,6 +14,7 @@ LABEL maintainer="xuxiaowei@xuxiaowei.com.cn" \
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+        sudo \
         curl \
         git \
         libssl-dev \
@@ -24,6 +25,9 @@ RUN apt-get update \
     && RUNNER_URL="https://github.com/loong64/runner/releases/download/${RUNNER_BRANCH}/${RUNNER_TARBALL}" \
     && echo "Downloading runner from: ${RUNNER_URL}" \
     && useradd -m -s /bin/bash runner \
+    && usermod -aG sudo runner \
+    && echo "runner ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/runner \
+    && chmod 440 /etc/sudoers.d/runner \
     && mkdir -p /home/runner/actions-runner \
     && cd /home/runner/actions-runner \
     && curl -fsSL "${RUNNER_URL}" -o "${RUNNER_TARBALL}" \
