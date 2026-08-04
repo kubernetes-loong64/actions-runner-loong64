@@ -10,6 +10,12 @@ jobs:
       - name: Show OS release info
         run: cat /etc/os-release
 
+  docker:
+    runs-on: self-hosted
+    steps:
+      - name: Show Docker info
+        run: sudo docker info
+
   checkout-v3:
     runs-on: self-hosted
     steps:
